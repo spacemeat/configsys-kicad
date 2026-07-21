@@ -24,45 +24,40 @@ CXX_OVERRIDE=""
 
 has() { case " $FEATURES " in *" $1 "*) return 0;; *) return 1;; esac; }
 
-# 0/1. dependencies (base + per-feature), per package manager. `git`/`cmake`/compiler included.
-#      KiCad needs OCC (3D kernel) for a usable build, so it's in the base set regardless.
+# 0/1. dependencies. KiCad's build-dep set is large and drifts every release (wx 3.2, zstd,
+#      protobuf, nng, OCC, ...). Where the package manager can compute it from the distro's own
+#      kicad package we do exactly that — `apt build-dep` / `dnf builddep` — which is FAR more
+#      robust than a hand-kept list (that kept missing pieces: wx 3.2, then zstd, then protobuf...).
+#      The rolling distros (Arch, openSUSE) keep an explicit list. NOTE: `features:` gates the CMake
+#      FLAGS (below); on the build-dep distros the whole dep set installs regardless (harmless).
+#      Verified on ubuntu:22.04 (apt build-dep) and fedora:41 (dnf builddep).
 if command -v apt-get >/dev/null 2>&1; then
-    # Ubuntu LTS ships an OLD wxWidgets (22.04 = 3.0) but KiCad >= 7 needs wx 3.2, so
-    # libwxgtk3.2-dev isn't in stock jammy at all. The KiCad releases PPA backports wx 3.2 AND a
-    # matching wxPython 4.2 as binaries — add it on Ubuntu/Pop so the deps below resolve. (Debian
-    # itself carries wx 3.2, so it skips the PPA.) Verified on ubuntu:22.04. Set KICAD_PPA to the
-    # series you build: kicad-9.0-releases / kicad-8.0-releases / kicad-dev-nightly.
+    # Ubuntu LTS ships an old wxWidgets (22.04 = 3.0) but KiCad >= 7 needs 3.2, so add the KiCad
+    # releases PPA WITH source (-s enables the deb-src that build-dep needs) — it backports wx 3.2
+    # and provides a current kicad source. Debian carries current kicad itself but still needs
+    # deb-src enabled for build-dep. Set KICAD_PPA to your series (kicad-9.0-releases /
+    # kicad-8.0-releases / kicad-dev-nightly).
     . /etc/os-release 2>/dev/null || true
+    sudo apt-get update
+    sudo apt-get install -y software-properties-common ca-certificates git cmake
     if [ "${ID:-}" = ubuntu ] || printf '%s' "${ID_LIKE:-}" | grep -qw ubuntu; then
+        sudo add-apt-repository -y -s "${KICAD_PPA:-ppa:kicad/kicad-9.0-releases}"
         sudo apt-get update
-        sudo apt-get install -y software-properties-common ca-certificates
-        sudo add-apt-repository -y "${KICAD_PPA:-ppa:kicad/kicad-9.0-releases}"
     fi
-    pkgs=(cmake g++ git swig python3-dev libwxgtk3.2-dev libboost-all-dev libglew-dev libglm-dev
-          libcairo2-dev libbz2-dev libcurl4-openssl-dev libssl-dev libgit2-dev libgtk-3-dev
-          gettext unixodbc-dev libsecret-1-dev
-          libocct-foundation-dev libocct-data-exchange-dev libocct-visualization-dev
-          libocct-modeling-algorithms-dev libocct-modeling-data-dev libocct-ocaf-dev)
-    has scripting && pkgs+=(python3-wxgtk4.0)
-    has spice     && pkgs+=(libngspice0-dev)
-    sudo apt-get update && sudo apt-get install -y "${pkgs[@]}"
+    sudo apt-get build-dep -y kicad
 elif command -v dnf >/dev/null 2>&1; then
-    pkgs=(cmake gcc-c++ git swig python3-devel wxGTK-devel boost-devel glew-devel glm-devel
-          cairo-devel bzip2-devel libcurl-devel openssl-devel libgit2-devel gtk3-devel
-          gettext-devel unixODBC-devel libsecret-devel opencascade-devel)
-    has scripting && pkgs+=(python3-wxpython4)
-    has spice     && pkgs+=(ngspice-devel)
-    sudo dnf install -y "${pkgs[@]}"
+    sudo dnf install -y dnf-plugins-core git cmake
+    sudo dnf builddep -y kicad
 elif command -v pacman >/dev/null 2>&1; then
     pkgs=(cmake gcc git swig python wxwidgets-gtk3 boost glew glm cairo curl openssl libgit2
-          gtk3 gettext unixodbc libsecret opencascade)
+          gtk3 gettext unixodbc libsecret opencascade zstd protobuf nng)
     has scripting && pkgs+=(python-wxpython)
     has spice     && pkgs+=(ngspice)
     sudo pacman -S --needed --noconfirm "${pkgs[@]}"
 elif command -v zypper >/dev/null 2>&1; then
     pkgs=(cmake gcc-c++ git swig python3-devel wxWidgets-3_2-devel boost-devel glew-devel
           glm-devel cairo-devel libcurl-devel libopenssl-devel libgit2-devel gtk3-devel
-          gettext-tools unixODBC-devel libsecret-devel opencascade-devel)
+          gettext-tools unixODBC-devel libsecret-devel opencascade-devel libzstd-devel protobuf-devel)
     has scripting && pkgs+=(python3-wxPython)
     has spice     && pkgs+=(ngspice-devel)
     sudo zypper install -y "${pkgs[@]}"

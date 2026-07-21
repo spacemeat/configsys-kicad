@@ -61,12 +61,15 @@ remove `<dir>` by hand. `fix-scope` MOVES the tree between `~` and `/opt` rather
 
 ## Knobs you own (`build-kicad.sh`)
 
-- **The per-distro dependency lists** — the most likely thing to need edits for your distro/version.
+- **Dependencies** — on **Ubuntu/Debian** and **Fedora** the recipe pulls KiCad's *complete*
+  build-dep set from the distro's own kicad package (`apt build-dep` / `dnf builddep`), so it stays
+  correct as KiCad's deps drift (wx 3.2 → zstd → protobuf → nng …) instead of a hand list you chase.
+  **Arch and openSUSE** keep an explicit list — the thing most likely to need a tweak there.
 - **`KICAD_PPA`** (Ubuntu/Pop) — Ubuntu LTS ships an old wxWidgets (22.04 = 3.0), but KiCad ≥ 7
-  needs wx 3.2, so `libwxgtk3.2-dev` isn't in stock jammy. The recipe adds the **KiCad releases
-  PPA** (`ppa:kicad/kicad-9.0-releases` by default), which backports wx 3.2 + a matching wxPython.
-  Override `KICAD_PPA` to match the series you build (e.g. `kicad-8.0-releases`, or
-  `kicad-dev-nightly` for master). Debian's own repos already carry wx 3.2, so it skips the PPA.
+  needs wx 3.2, absent from stock jammy. The recipe adds the **KiCad releases PPA**
+  (`ppa:kicad/kicad-9.0-releases` by default, with `-s` so `build-dep` gets its deb-src), which
+  backports wx 3.2 + a current kicad source. Override `KICAD_PPA` for another series
+  (`kicad-8.0-releases`, or `kicad-dev-nightly` for master). Debian carries current kicad itself.
 - **`JOBS`** (parallel compile), **`CC_OVERRIDE`/`CXX_OVERRIDE`** (a specific compiler).
 - The install goes to a **prefix under the build dir** (user-writable, no sudo); only the
   dependency step sudos (via the package manager).
