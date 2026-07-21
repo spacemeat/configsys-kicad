@@ -72,10 +72,32 @@ def test_install_command(KicadBuild):
     assert "KICAD_FEATURES='scripting spice 3d'" in r2.calls[-1]
 
 
-def test_get_version_probes_the_install_prefix(KicadBuild):
-    r = Runner(pretend=True)
-    KicadBuild(r).get_version(_rc(dir='kicad-git'))
-    assert r.calls[-1].startswith('test -x ') and r.calls[-1].endswith('/kicad-git/install/bin/kicad')
+def test_get_version_reports_the_built_tag(KicadBuild):
+    from configsys.runner import Result
+
+    class Fake:
+        def __init__(self, built=True, describe='9.0.0'):
+            self.built, self.describe, self.calls = built, describe, []
+
+        def run(self, cmd, **kw):
+            self.calls.append(cmd)
+            if cmd.startswith('test -x'):
+                return Result(cmd, 0 if self.built else 1)
+            if 'describe' in cmd:
+                return Result(cmd, 0, stdout=self.describe + '\n')
+            return Result(cmd, 0)
+
+    # built at the tag -> version IS the tag, so it matches get_latest (the ref) => "up to date"
+    d = KicadBuild(Fake(describe='9.0.0'))
+    assert d.get_version(_rc(dir='kicad-git', ref='9.0.0')) == '9.0.0'
+    assert d.get_latest(_rc(ref='9.0.0')) == '9.0.0'
+    assert any('describe --tags' in c for c in d.runner.calls)
+    # not built -> None (no describe attempted)
+    nb = KicadBuild(Fake(built=False))
+    assert nb.get_version(_rc(dir='kicad-git')) is None
+    assert not any('describe' in c for c in nb.runner.calls)
+    # a master build describes as <tag>-<n>-g<hash>; falls back to 'built' if undescribable
+    assert KicadBuild(Fake(describe='')).get_version(_rc(dir='kicad-git')) == 'built'
 
 
 def test_reconcile_scope_moves_the_tree(KicadBuild):

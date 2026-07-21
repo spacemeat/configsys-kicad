@@ -89,9 +89,19 @@ class KicadBuild(Driver):
     # -- read -------------------------------------------------------------
 
     def get_version(self, rc):
-        return 'built' if self.runner.run(f'test -x {shlex.quote(str(self._binary(rc)))}').ok else None
+        '''The version actually built = what the source tree is checked out at, via
+        `git describe --tags`. For a tag build (`ref: 9.0.0`) that's exactly the tag, so it
+        matches get_latest (the ref) and the menu reads "up to date" instead of "built" vs
+        "9.0.0". A master/branch build describes as `<tag>-<n>-g<hash>` — legitimately ahead of
+        the last release tag. Falls back to 'built' if the tree has no describable tag.'''
+        if not self.runner.run(f'test -x {shlex.quote(str(self._binary(rc)))}').ok:
+            return None
+        src = self._build_dir(rc) / 'kicad'
+        r = self.runner.run(f'git -C {shlex.quote(str(src))} describe --tags')
+        return (r.stdout.strip() if r.ok else '') or 'built'
 
     def get_latest(self, rc):
+        # the version you'd (re)build = the declared ref; matches get_version for a tag build.
         return rc.fields.get('ref') or 'built'
 
     def is_locked(self, rc):
