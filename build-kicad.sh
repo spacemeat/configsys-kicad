@@ -27,6 +27,17 @@ has() { case " $FEATURES " in *" $1 "*) return 0;; *) return 1;; esac; }
 # 0/1. dependencies (base + per-feature), per package manager. `git`/`cmake`/compiler included.
 #      KiCad needs OCC (3D kernel) for a usable build, so it's in the base set regardless.
 if command -v apt-get >/dev/null 2>&1; then
+    # Ubuntu LTS ships an OLD wxWidgets (22.04 = 3.0) but KiCad >= 7 needs wx 3.2, so
+    # libwxgtk3.2-dev isn't in stock jammy at all. The KiCad releases PPA backports wx 3.2 AND a
+    # matching wxPython 4.2 as binaries — add it on Ubuntu/Pop so the deps below resolve. (Debian
+    # itself carries wx 3.2, so it skips the PPA.) Verified on ubuntu:22.04. Set KICAD_PPA to the
+    # series you build: kicad-9.0-releases / kicad-8.0-releases / kicad-dev-nightly.
+    . /etc/os-release 2>/dev/null || true
+    if [ "${ID:-}" = ubuntu ] || printf '%s' "${ID_LIKE:-}" | grep -qw ubuntu; then
+        sudo apt-get update
+        sudo apt-get install -y software-properties-common ca-certificates
+        sudo add-apt-repository -y "${KICAD_PPA:-ppa:kicad/kicad-9.0-releases}"
+    fi
     pkgs=(cmake g++ git swig python3-dev libwxgtk3.2-dev libboost-all-dev libglew-dev libglm-dev
           libcairo2-dev libbz2-dev libcurl4-openssl-dev libssl-dev libgit2-dev libgtk-3-dev
           gettext unixodbc-dev libsecret-1-dev
