@@ -85,10 +85,23 @@ git fetch --tags --quiet || true
 CC_ENV=()
 [ -n "$CC_OVERRIDE" ]  && CC_ENV+=("CC=$CC_OVERRIDE")
 [ -n "$CXX_OVERRIDE" ] && CC_ENV+=("CXX=$CXX_OVERRIDE")
+
+# KiCad finds Protobuf in CONFIG mode by default, which needs protobuf's own CMake config package
+# (shipped by protobuf ~3.21+). Older distros (e.g. Ubuntu 22.04 = protobuf 3.12) don't ship it, so
+# if no protobuf config package is installed, switch KiCad to CMake's bundled FindProtobuf module
+# (`-DKICAD_USE_CMAKE_FINDPROTOBUF=ON` — KiCad's own escape hatch for exactly this). Distro-agnostic:
+# on Fedora/Arch/new Ubuntu the config file IS present, so config mode stays.
+PROTO_EXTRA=""
+if ! find /usr /usr/local \( -name 'protobuf-config.cmake' -o -name 'ProtobufConfig.cmake' \) 2>/dev/null | grep -q .; then
+    PROTO_EXTRA="-DKICAD_USE_CMAKE_FINDPROTOBUF=ON"
+    echo "build-kicad: protobuf CMake config not found -> using FindProtobuf module mode"
+fi
+
 # shellcheck disable=SC2086
 env "${CC_ENV[@]}" cmake -B "$BUILD" -S "$SRC" \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$PREFIX" \
+    $PROTO_EXTRA \
     $CMAKE_FEATURES
 
 # 4. build + install
