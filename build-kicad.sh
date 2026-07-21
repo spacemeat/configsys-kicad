@@ -72,7 +72,13 @@ else
 fi
 
 # 2. sources
-mkdir -p "$ROOT"
+# Create the build root. At user scope $ROOT is under ~ (writable directly). At system scope it's
+# /opt/... — a normal user can't mkdir there, so fall back to sudo and hand ownership back, and the
+# rest of the build (clone, compile, install-to-prefix) runs unprivileged in place. That's how an
+# admin's `scope: system` build finishes with everything world-readable under /opt, no root compile.
+if ! mkdir -p "$ROOT" 2>/dev/null; then
+    sudo mkdir -p "$ROOT" && sudo chown "$(id -un):$(id -gn)" "$ROOT"
+fi
 if [ ! -d "$SRC/.git" ]; then
     git clone https://gitlab.com/kicad/code/kicad.git "$SRC"
 fi
