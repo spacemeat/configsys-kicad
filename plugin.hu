@@ -1,0 +1,14 @@
+{
+    // configsys-kicad — a code plugin that builds KiCad from source (a specific release tag or
+    // master), so you can run a version/nightly your distro doesn't package. Overrides base
+    // configsys's `kicad` (native/Flathub) wherever this plugin is loaded + trusted. Parallel
+    // to configsys-blender: a thin orchestration driver + a per-distro build recipe you own.
+    name: configsys-kicad
+    version: 0.1.0
+    requires-abi: 1
+
+    provides: { drivers: [ kicad-build ] }
+
+    code: kicad.py       // the orchestration driver (needs `plugin trust`, since it runs code)
+    data: [ kicad.hu ]   // the `kicad` override
+}

@@ -1,0 +1,25 @@
+{
+    // Override base configsys's `kicad` (native package / Flathub) with a from-source build,
+    // wherever this plugin is loaded. Everything wavy — the long per-distro build-dep list, the
+    // cmake/make/install — lives in build-kicad.sh; this just parameterizes it.
+    //
+    //   ref       git tag to build (e.g. 9.0.0, 8.0.6) OR 'master' for nightly. Empty = default
+    //             branch. This is the "which version" knob; a tag is reproducible, master tracks HEAD.
+    //   dir       build-tree parent, scope-honored (~/<dir> for user, /opt/<dir> for system).
+    //   features  OPTIONAL subset of { scripting, spice, 3d }. ABSENT = a FULL build (all three).
+    //             Listing it TRIMS to that subset — e.g. `features: [ 3d ]` skips the Python
+    //             scripting console and the ngspice simulator (smaller deps + a shorter build).
+    //             The driver maps each token to KiCad CMake flags and the recipe installs its
+    //             per-distro deps. See README.md for the token table.
+    components: {
+        kicad: {
+            install: [
+                { via: kicad-build  ref: 9.0.0  dir: kicad-git }   // full build (scripting + spice + 3d)
+
+                // trimmed example — replace the binding above with a variant like this:
+                // { via: kicad-build  ref: 9.0.0  dir: kicad-git  features: [ 3d ] }        // 3D viewer only
+                // { via: kicad-build  ref: master  dir: kicad-git  features: [ scripting, 3d ] }  // nightly, no SPICE
+            ]
+        }
+    }
+}
