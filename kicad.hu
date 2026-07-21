@@ -6,6 +6,11 @@
     //   ref       git tag to build (e.g. 9.0.0, 8.0.6) OR 'master' for nightly. Empty = default
     //             branch. This is the "which version" knob; a tag is reproducible, master tracks HEAD.
     //   dir       build-tree parent, scope-honored (~/<dir> for user, /opt/<dir> for system).
+    //   scope     user | system. Pinned to `user` here on purpose: a from-source build is a
+    //             user-space activity (clone + compile in your homedir), so it should NOT inherit
+    //             a machine-wide `scope: system` default meant for package installs (that would
+    //             put it in /opt, which also needs root the recipe doesn't take). Change to
+    //             `system` only if you also teach build-kicad.sh to sudo its mkdir/clone/install.
     //   features  OPTIONAL subset of { scripting, spice, 3d }. ABSENT = a FULL build (all three).
     //             Listing it TRIMS to that subset — e.g. `features: [ 3d ]` skips the Python
     //             scripting console and the ngspice simulator (smaller deps + a shorter build).
@@ -14,11 +19,11 @@
     components: {
         kicad: {
             install: [
-                { via: kicad-build  ref: 9.0.0  dir: kicad-git }   // full build (scripting + spice + 3d)
+                { via: kicad-build  ref: 9.0.0  dir: kicad-git  scope: user }   // full build (scripting + spice + 3d)
 
                 // trimmed example — replace the binding above with a variant like this:
-                // { via: kicad-build  ref: 9.0.0  dir: kicad-git  features: [ 3d ] }        // 3D viewer only
-                // { via: kicad-build  ref: master  dir: kicad-git  features: [ scripting, 3d ] }  // nightly, no SPICE
+                // { via: kicad-build  ref: 9.0.0  dir: kicad-git  scope: user  features: [ 3d ] }        // 3D viewer only
+                // { via: kicad-build  ref: master  dir: kicad-git  scope: user  features: [ scripting, 3d ] }  // nightly, no SPICE
             ]
         }
     }
