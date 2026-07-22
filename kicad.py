@@ -50,9 +50,11 @@ class KicadBuild(Driver):
         return self.scoped_dir(rc.fields.get('dir') or 'kicad-git', rc)
 
     def _script(self, rc):
-        # build-kicad.sh ships next to the .hu that defined this component (the plugin dir)
-        root = Path(rc.source).parent if rc.source else Path('.')
-        return root / 'build-kicad.sh'
+        # build-kicad.sh ships in THIS driver's plugin dir (next to kicad.py) — find it via
+        # __file__, NOT next to rc.source. The binding may be overridden in another layer (a user's
+        # config / primary plugin) that doesn't carry the recipe, so we can't assume it sits
+        # beside the binding's source. (See the same fix in configsys-blender's blender.py.)
+        return Path(__file__).resolve().parent / 'build-kicad.sh'
 
     def _binary(self, rc):
         # the recipe installs into <build-dir>/install (a scope-honored prefix)
